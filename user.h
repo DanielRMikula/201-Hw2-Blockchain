@@ -8,7 +8,7 @@
 #define STRUCT_SIZE sizeof(struct User) // Block size in bytes
 
 
-typedef struct User {
+struct User {
 	char Username[20];
 	time_t loginTime;
 	struct tm localLoginTime;

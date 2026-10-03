@@ -9,17 +9,15 @@ unsigned char* SSHA(const unsigned char* msg, size_t length) {
     E = 76;
 
     for (size_t i = 0; i < length; i++) {
-        for (int round = 0; round < 8; round++) {
-            unsigned char g = (B & C) | (C & D);
-            unsigned char old_A = A;
-            A += ((A + B) & ~D);
-            B ^= (C ^ E);
-            E = (g + msg[i] + B) & 0xFF;
-            D = A ^ C;
-            C = (old_A + E) & 0xFF;
-            A = E & 0xFF;
-            B = old_A & 0xFF;
-        }
+        // One round per message byte, per the SSHA diagram. All five new values
+        // are computed from the OLD A..E, so snapshot them first.
+        unsigned char a = A, b = B, c = C, d = D, e = E;
+
+        A = e;
+        B = a;
+        C = (unsigned char)((a >> 2) + e);
+        D = (unsigned char)((a >> 2) ^ (b >> 1));
+        E = (unsigned char)(msg[i] + (b >> 1) + ((b & c) | (d & c)));
     }
 
     unsigned char* digest = (unsigned char*)malloc(DIGEST_SIZE * sizeof(unsigned char));

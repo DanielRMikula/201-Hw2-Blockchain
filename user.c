@@ -115,7 +115,7 @@ void verify(struct User* curr) {
         height++;
     }
 
-    printf("User %d, nothing to verify\n", height);
+    printf("User %d, nothing to verify\n", height - 1); // height is one past the last user
 
     printf("\t%-20s", "User Data:");
     printUser(curr);

@@ -1,0 +1,64 @@
+From 081e53c31ae46a64622ce5aac8fc2ee1ccabc779 Mon Sep 17 00:00:00 2001
+From: Daniel Mikula <student@example.com>
+Date: Sat, 3 Oct 2026 01:57:14 +0000
+Subject: [PATCH 4/4] Fix SSHA: implement the round function from the approved
+ diagram
+
+The old round loop ran 8 rounds per byte with operations that are not in the
+diagram (A += (A+B)&~D, B ^= C^E), updated A..E in place so later lines used
+already-overwritten values, and fed the wrong operands into C, D and E. This
+made the digest ignore most of the data it was given, so tampering with a
+username, timestamp or stored hash went undetected.
+
+Now one round per message byte, all five outputs computed from the old state:
+  A'=E  B'=A  C'=(A>>2)+E  D'=(A>>2)^(B>>1)  E'=msg[i]+(B>>1)+((B&C)|(D&C))
+
+Tests now passing (previously failing):
+  T12 - digest covers loginTime and localLoginTime
+  T17 - corrupting a middle entry is reported at that entry, no success banner
+  T19 - modified username is detected
+  T20 - modified timestamp (raw and broken-down) is detected
+  T21 - modified stored hash (middle, oldest, head) is detected
+  T25 - SSHA output matches an independent implementation of the diagram
+
+Still failing (documented limitation of the approved algorithm, not a code bug):
+  T11, T13 - a few single-bit changes cancel out inside the 8-bit SSHA state
+             (about 1.5% of random bit flips leave the digest unchanged)
+---
+ hash.c | 20 +++++++++-----------
+ 1 file changed, 9 insertions(+), 11 deletions(-)
+
+diff --git a/hash.c b/hash.c
+index 5d1192c..f6321f2 100644
+--- a/hash.c
++++ b/hash.c
+@@ -9,17 +9,15 @@ unsigned char* SSHA(const unsigned char* msg, size_t length) {
+     E = 76;
+ 
+     for (size_t i = 0; i < length; i++) {
+-        for (int round = 0; round < 8; round++) {
+-            unsigned char g = (B & C) | (C & D);
+-            unsigned char old_A = A;
+-            A += ((A + B) & ~D);
+-            B ^= (C ^ E);
+-            E = (g + msg[i] + B) & 0xFF;
+-            D = A ^ C;
+-            C = (old_A + E) & 0xFF;
+-            A = E & 0xFF;
+-            B = old_A & 0xFF;
+-        }
++        // One round per message byte, per the SSHA diagram. All five new values
++        // are computed from the OLD A..E, so snapshot them first.
++        unsigned char a = A, b = B, c = C, d = D, e = E;
++
++        A = e;
++        B = a;
++        C = (unsigned char)((a >> 2) + e);
++        D = (unsigned char)((a >> 2) ^ (b >> 1));
++        E = (unsigned char)(msg[i] + (b >> 1) + ((b & c) | (d & c)));
+     }
+ 
+     unsigned char* digest = (unsigned char*)malloc(DIGEST_SIZE * sizeof(unsigned char));
+-- 
+2.43.0
+

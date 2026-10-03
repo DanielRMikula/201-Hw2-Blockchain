@@ -1,0 +1,32 @@
+From 77852a65087efd63563dc46eab66c3b0e37dfe12 Mon Sep 17 00:00:00 2001
+From: Daniel Mikula <student@example.com>
+Date: Sat, 3 Oct 2026 01:56:14 +0000
+Subject: [PATCH 3/4] Fix verify(): last block was labeled "User n+1" instead
+ of "User n"
+
+height is incremented after every comparison, so after the loop it is one past
+the last user. Print height - 1 for the final "nothing to verify" line.
+
+Tests now passing (previously failing):
+  T14 - verify walk starts at head, reports n-1 comparisons, and ends at the
+        oldest block labeled "User 5, nothing to verify" (5-entry log)
+---
+ user.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/user.c b/user.c
+index 83e97b3..80337ec 100644
+--- a/user.c
++++ b/user.c
+@@ -115,7 +115,7 @@ void verify(struct User* curr) {
+         height++;
+     }
+ 
+-    printf("User %d, nothing to verify\n", height);
++    printf("User %d, nothing to verify\n", height - 1); // height is one past the last user
+ 
+     printf("\t%-20s", "User Data:");
+     printUser(curr);
+-- 
+2.43.0
+

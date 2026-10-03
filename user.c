@@ -13,7 +13,7 @@ struct User* add(struct User * head, char* Username) {
 	newHead->localLoginTime = *localtime(&(newHead->loginTime));
     newHead->next = head;
     if (head == NULL) {
-        newHead->hash.hash0 = 1; // Logical error: Incorrectly initializing hash
+        newHead->hash.hash0 = 1;
         newHead->hash.hash1 = 2;
         newHead->hash.hash2 = 3;
         newHead->hash.hash3 = 4;
@@ -21,10 +21,10 @@ struct User* add(struct User * head, char* Username) {
     }
     else {
        
-        generateDigest(&(newHead->hash), head); // Logical error: Generating hash for the wrong node
+        generateDigest(&(newHead->hash), head); // new block stores the digest of the previous block
     }
     
-    return newHead; // Logical error: Returning the old head instead of the new head
+    return newHead;
 }
 
 void printLog(struct User* head) {
@@ -61,7 +61,7 @@ void printUser(struct User* user) {
 
 void generateDigest(struct Digest* digest, struct User* User) {
     unsigned char* result = SSHA((unsigned char*)User, STRUCT_SIZE);
-    digest->hash0 = result[0]; 
+    digest->hash0 = result[0];
     digest->hash1 = result[1];
     digest->hash2 = result[2];
     digest->hash3 = result[3];
@@ -76,7 +76,7 @@ void verify(struct User* curr) {
 
     struct User* prev = NULL;
     if (curr != NULL) {
-        prev = curr; // Logical error: Incorrectly traversing the blockchain
+        prev = curr->next;
     }
 
     printf("User 1, impossible to verify\n");
@@ -85,35 +85,32 @@ void verify(struct User* curr) {
     printf("\n");
 
     while (prev) {
-        unsigned char* computedHash = NULL;
+        // curr stores the digest of prev, so recompute prev's digest and compare
+        struct Digest prev_digest_computed;
+        generateDigest(&prev_digest_computed, prev);
 
-        if (prev != NULL) {
-            struct Digest prev_digest_computed;
-            generateDigest(&prev_digest_computed, curr); // Logical error: Generating hash for the wrong node
-
-            if (digest_equal(prev_digest_computed, curr->hash)) { // Logical error: Comparing a block against the wrong previous or next block
-                printf("User %d passed\n", height);
-                printf("\t%-20s", "User Data:");
-                printUser(curr);
-                printf("\t%-20s", "Saved Hash:");
-                printDigest(curr->hash);
-                printf("\t%-20s", "Calculated Hash:");
-                printDigest(prev_digest_computed);
-                printf("\n\n");
-            }
-            else {
-                printf("User %d failed\n", height);
-                printf("\t%-20s", "User Data:");
-                printUser(curr);
-                printf("\t%-20s", "Saved Hash:");
-                printDigest(curr->hash);
-                printf("\t%-20s", "Calculated Hash:");
-                printDigest(prev_digest_computed);
-                printf("\n\n");
-                return;
-            }
+        if (digest_equal(prev_digest_computed, curr->hash)) {
+            printf("User %d passed\n", height);
+            printf("\t%-20s", "User Data:");
+            printUser(prev);
+            printf("\t%-20s", "Saved Hash:");
+            printDigest(curr->hash);
+            printf("\t%-20s", "Calculated Hash:");
+            printDigest(prev_digest_computed);
+            printf("\n\n");
         }
-        curr = prev; // Logical error: Incorrectly traversing the blockchain
+        else {
+            printf("User %d failed\n", height);
+            printf("\t%-20s", "User Data:");
+            printUser(prev);
+            printf("\t%-20s", "Saved Hash:");
+            printDigest(curr->hash);
+            printf("\t%-20s", "Calculated Hash:");
+            printDigest(prev_digest_computed);
+            printf("\n\n");
+            return;
+        }
+        curr = prev;
         prev = curr->next;
         height++;
     }
